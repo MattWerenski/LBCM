@@ -25,6 +25,7 @@ def compute_maps(base_image:np.array, ref_images, reg=0.001):
     :param reg:        regularization parameter for the entropic map
     :return:           list of (m x 2) np arrays corresponding to the entropic maps from the base to the refs
     '''
+
     base_support, base_mass = image_to_empirical(base_image)
     maps = []
     for ref_image in ref_images:
@@ -110,7 +111,7 @@ def find_coordinate_lbcm(base_image, ref_images, new_image, reg=0.001, ref_maps=
 
     return np.array(solution['x']).squeeze(), inner_products, new_map, ref_maps
 
-def synthesize_lbcm(base_image, ref_images, new_image, reg=0.001, ref_maps=[]):
+def synthesize_lbcm(base_image, ref_images, new_image, reg=0.001, lam=None, ref_maps=[]):
     '''
     synthesize_lbcm - Estimates the coordinate lambda and uses it to create the linear barycenter
 
@@ -125,10 +126,12 @@ def synthesize_lbcm(base_image, ref_images, new_image, reg=0.001, ref_maps=[]):
                        (p x p) np array for the inner prodcuts, the entropic map for the new image, 
                        and the maps from the base to the references.
     '''
-    lam, inner_products, new_map, ref_maps = find_coordinate_lbcm(
-        base_image, ref_images, new_image, reg=reg, ref_maps=ref_maps)
+
+    if lam is None:
+        lam, _, _, ref_maps = find_coordinate_lbcm(
+            base_image, ref_images, new_image, reg=reg, ref_maps=ref_maps)
     
     _, synth_mass = image_to_empirical(base_image)
     synth_support = np.einsum('i,ijk->jk', lam, ref_maps)
     
-    return synth_support, synth_mass, lam, inner_products, new_map, ref_maps
+    return synth_support, synth_mass

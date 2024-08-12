@@ -6,14 +6,32 @@ import scipy.linalg
 sqrtm = sp.linalg.sqrtm
 inv = sp.linalg.inv
 
-# computes the wasserstein distance between N(0,A) and N(0,B)
 def wass_dist(A,B,A_h=None):
+    '''
+    wass_dist - Computes the Wasserstein distance between N(0,A) and N(0,B)
+
+    :param A:   (d x d) np array for the covariance of the first variable
+    :param B:   (d x d) np array for the covariance of the second variable
+    :param A_h: (d x d) np array containing a pre-computed square root of A
+    :return:    Wasserstein distance between N(0,A) and N(0,B)
+    '''
     if A_h is None:
         A_h = sqrtm(A)
     return np.sqrt(np.trace(A + B - 2 * sqrtm(A_h @ B @ A_h)))
 
-# computes the true barycenter using the algorithm of Chewi et al.
+
+
 def true_bc(S_arr, lam, iters=20, initial=None):
+    '''
+    true_bc - Computes the true barycenter of the matrices in S_arr with coordinate lam
+              using the algorithm from Chewi et al.
+
+    :param S_arr:   list of p (d x d) np arrays of covariance matrices
+    :param lam:     (p) np array containing the coordinate
+    :param iters:   number of iterations to run
+    :param initial: starting point of the iterations, defaults to S_arr[0]
+    :return:        (d x d) np array of the covariance matrix
+    '''
     p = len(S_arr)
     
     if initial is None:
@@ -37,8 +55,17 @@ def true_bc(S_arr, lam, iters=20, initial=None):
     
     return S
 
-# computs the eta inerpolation point from N(0,A) to N(0,B)
+
+
 def mccann_interp(A,B,eta=0.5):
+    '''
+    mccann_interp - Computes the McCann interpolation of two matrices
+
+    :param A:   (d x d) np array covariance matrix of the source
+    :param B:   (d x d) np array covariance matrix of the traget
+    :param eta: float between 0 and 1 representing how far to interpolate
+    :return:    (d x d) np array of the interpolation
+    '''
     A_h = sqrtm(A) # half power
     A_nh = sqrtm(inv(A)) #neg half
     
@@ -51,29 +78,18 @@ def mccann_interp(A,B,eta=0.5):
     # Formula for cov. under linear transform
     return interp_map @ A @ interp_map
 
-# computes the norm of the gradient at a given matrix
-def grad_norm(S_arr, lam, S):
-    p = len(S_arr)
-    
-    # constructs the PSD matrix and Linear vector
-    
-    # pre-computed for below
-    S_h = sqrtm(S)
-    S_nh = inv(sqrtm(S))
-    
-    # M_i, L_i, and R_i matrics 
-    M_arr = [sqrtm(S_h @ Si @ S_h) for Si in S_arr]
-    L_arr = [S_nh @ Mi for Mi in M_arr]
-    R_arr = [Mi @ S_nh for Mi in M_arr]
-    
-    D = np.array([np.einsum('ij,ji->',Li,Rj) for Li in L_arr for Rj in R_arr]).reshape((p,p))
-    e = -2 * np.array([np.trace(Mi) for Mi in M_arr])
-    z = np.trace(S)
-    
-    return np.sqrt(lam.T @ D @ lam + lam @ e + z)
+
 
 def lbcm_bc(refs, base, lam, C_refs=None):
-    
+    '''
+    lbcm_bc - Computes the linear bary center for the given refs, base, and coordinate
+
+    :param refs:   p (d x d) np arrays for the reference covariances
+    :param base:   (d x d) np array for the base covariance
+    :param lam:    (p) np array of the coordinates
+    :param C_refs: pre-computed C matrices (linear transforms of base to references)
+    :return:       the linear bary center wrt the given parameters
+    '''
     if C_refs is None:
         S_h = sqrtm(base)
         S_nh = sqrtm(inv(base))
@@ -83,26 +99,34 @@ def lbcm_bc(refs, base, lam, C_refs=None):
     avg_map = np.tensordot(lam, C_refs, 1)
     return avg_map @ base @ avg_map.T
 
-# Finds the optimal lambda by minimizing the norm of the gradient
-# this can be seen as minimizing an upper bound in the wass. distance
 
-def opt_lam_grad_norm(S_arr, S, initial=None):
-    p = len(S_arr)
+
+def opt_lam_grad_norm(refs, new, initial=None):
+    '''
+    opt_lam_grad_norm - Finds the optimal lambda which minimizes the norm of the gradient
+                        in the BCM objective (approximately solves the BCM objective)
+
+    :param refs:    list of p (d x d) np arrays for the refernce covariance matrices
+    :param new:     (d x d) np arrays for the covariance to approximate
+    :param initial: (p) np array of the initialization for the optimization procedure
+    :return:        (p) np array of the optimal coordinate
+    '''
+    p = len(refs)
     
     # constructs the PSD matrix and Linear vector
     
     # pre-computed for many formulas
-    S_h = sqrtm(S)
-    S_nh = sqrtm(inv(S))
+    new_h = sqrtm(new)
+    new_nh = sqrtm(inv(new))
     
     # M_i, L_i, and R_i matrics 
-    M_arr = [sqrtm(S_h @ Si @ S_h) for Si in S_arr]
-    L_arr = [S_nh @ Mi for Mi in M_arr]
-    R_arr = [Mi @ S_nh for Mi in M_arr]
+    M_arr = [sqrtm(new_h @ Si @ new_h) for Si in refs]
+    L_arr = [new_nh @ Mi for Mi in M_arr]
+    R_arr = [Mi @ new_nh for Mi in M_arr]
     
     D = np.array([np.einsum('ij,ji->',Li,Rj) for Li in L_arr for Rj in R_arr]).reshape((p,p))
     e = -2 * np.array([np.trace(Mi) for Mi in M_arr])
-    z = np.trace(S)
+    z = np.trace(new)
     
     cvxopt.solvers.options['show_progress'] = False
     
@@ -129,11 +153,18 @@ def opt_lam_grad_norm(S_arr, S, initial=None):
     solution['dual objective'] += z
     return np.array(solution['x']).squeeze()
 
-# Finds the optimal lambda by minimizing the norm of the gradient
-# this can be seen as minimizing an upper bound in the wass. distance
+
 
 def opt_lam_lbcm(refs, base, new, initial=None):
-    
+    '''
+    opt_lam_lbcm - finds the optimal lambda in the LBCM movie by solving a QP
+
+    :param refs:    list of p (d x d) np arrays for the refernce covariance matrices
+    :param base:    (d x d) np array for the base measure in the LBCM
+    :param new:     (d x d) np arrays for the covariance to approximate
+    :param initial: (p) np array of the initialization for the optimization procedure
+    :return:        (p) np array of the optimal coordinate
+    '''
     p = len(refs)
     
     # pre-computed for many formulas

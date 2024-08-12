@@ -3,6 +3,8 @@ import ot
 import scipy as sp
 import scipy.stats
 
+# the parameters in this file have been tuned a bit to work well for MNIST images
+
 def create_base_image(ref_images, reg=0.005, cut_off=0.001):
     '''
     create_base_image - Generates an average using a convolution barycenter of the references
@@ -43,7 +45,7 @@ def image_to_empirical(image:np.array):
             support += [[i /  nheight, j / nwidth]]
             mass += [image[i,j]]
             
-    return support, np.array(mass)
+    return np.array(support), np.array(mass)
 
 def empirical_to_image(support:np.array, mass:np.array, height=28, width=28, 
                        resolution=5, lower_bound=0.0002, bw_method=0.15):
