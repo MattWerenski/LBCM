@@ -5,17 +5,22 @@ import numpy as np
 from images import create_base_image, empirical_to_image
 from lbcm import *
 import mnist_utilities
+import synthesis
+import tensorflow as tf
 
 
-mnist.temporary_dir = lambda: './mnist'
+#mnist.temporary_dir = lambda: './mnist'
 
 # load and sort MNIST difits
 
-train_images = mnist.train_images()
-train_labels = mnist.train_labels()
+#train_images = mnist.train_images()
+#train_labels = mnist.train_labels()
 
-test_images = mnist.test_images()
-test_labels = mnist.test_labels()
+#test_images = mnist.test_images()
+#test_labels = mnist.test_labels()
+
+# Automatically downloads and loads the MNIST dataset
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 
 sorted_digits = {}
 for i in range(10):
@@ -80,7 +85,9 @@ for f in range(6):
 
     ip = mnist_utilities.inner_products(cnew_image, np.array(cref_images))
     lam = mnist_utilities.solve(ip)
-    bcm_image = mnist_utilities.convolutional_barycenter(np.array(ref_images), lam)
+    bcm_support,bcm_mass=synthesis.particle_synthesis(np.array(ref_images),lam,base_1,100,0.05,0)
+    bcm_image=empirical_to_image(bcm_support,bcm_mass)
+
 
     axs[f][0].imshow(new_image, cmap='binary')
     axs[f][1].imshow(cnew_image, cmap='binary')
