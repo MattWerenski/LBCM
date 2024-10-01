@@ -65,14 +65,17 @@ cmaps_2 = compute_maps(cbase_2, cref_images, reg=0.002)
 
 # creates a plot
 
-fig, axs = plt.subplots(6,5,figsize=(10,12))
+fig, axs = plt.subplots(6,6,figsize=(10,12))
 LBCM_1_losses=[]
 LBCM_2_losses=[]
 BCM_losses=[]
+linear_losses=[]
 for f in range(6):
     
     i = np.random.randint(500) +  num_refs 
-    
+
+    #LBCM
+
     new_image = sorted_digits[ref_digit][i]
     cnew_image = corrupt(new_image)
 
@@ -84,13 +87,23 @@ for f in range(6):
 
     lbcm_image_1 = empirical_to_image(rec_support_1, rec_mass_1)
     lbcm_image_2 = empirical_to_image(rec_support_2, rec_mass_2)
+    
+    #Linear reconstruction
 
+    linear_lambda=mnist_utilities.linear_projection(cnew_image, np.array(ref_images))
+    weighted_references=np.zeros(np.shape(ref_images[0]))
+    for j in np.arange(len(linear_lambda)):
+        weighted_references=weighted_references+np.dot(linear_lambda[j],ref_images[j])
+
+    #BCM
     ip = mnist_utilities.inner_products(cnew_image, np.array(cref_images))
     lam = mnist_utilities.solve(ip)
     bcm_support,bcm_mass=synthesis.particle_synthesis(np.array(ref_images),lam,base_1,100,0.05,0)
     bcm_image=empirical_to_image(bcm_support,bcm_mass)
     
+    #Loss calculations 
     original_supp,original_mass=image_to_empirical(new_image)
+
     LBCM_distances_1= ot.utils.dist(original_supp, rec_support_1, metric='sqeuclidean') / 2
     lbcm_1_loss=ot.emd2(original_mass,rec_mass_1,LBCM_distances_1)
     LBCM_1_losses.append(lbcm_1_loss)
@@ -101,23 +114,34 @@ for f in range(6):
     bcm_loss=ot.emd2(original_mass,bcm_mass,bcm_distances)
     BCM_losses.append(bcm_loss)
 
+    weighted_recon_supp, weighted_recon_mass=image_to_empirical(weighted_references)
+    linear_r_distances=ot.utils.dist(original_supp, weighted_recon_supp, metric='sqeuclidean') / 2
+    linear_r_loss=ot.emd2(original_mass,weighted_recon_mass,linear_r_distances)
+    linear_losses.append(linear_r_loss)
+
+
     axs[f][0].imshow(new_image, cmap='binary')
     axs[f][1].imshow(cnew_image, cmap='binary')
     axs[f][2].imshow(lbcm_image_1, cmap='binary')
     axs[f][3].imshow(lbcm_image_2, cmap='binary')
     axs[f][4].imshow(bcm_image, cmap='binary')
+    axs[f][5].imshow(weighted_references,cmap='binary')
 
     axs[f][0].axis('off')
     axs[f][1].axis('off')
     axs[f][2].axis('off')
     axs[f][3].axis('off')
     axs[f][4].axis('off')
+    axs[f][5].axis('off')
+    #axs[f][5].imshow
 
 axs[0][0].set_title('Original', fontsize=20)
 axs[0][1].set_title('Occluded', fontsize=20)
 axs[0][2].set_title('LBCM (BC)\n Avg loss:{:.5f}'.format(np.mean(LBCM_1_losses)), fontsize=20)
 axs[0][3].set_title('LBCM (Uniform)\n Avg loss:{:.5f}'.format(np.mean(LBCM_2_losses)), fontsize=20)
 axs[0][4].set_title('BCM\n Avg loss:{:.5f}'.format(np.mean(BCM_losses)), fontsize=20)
+axs[0][5].set_title('Linear Reconstruction\n Avg loss:{:.5f}'.format(np.mean(linear_losses)), fontsize=20)
+
 
 plt.tight_layout()
 plt.show()

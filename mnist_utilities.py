@@ -195,3 +195,24 @@ def solve(inner_products, return_val=False):
         return [lam, soln['primal objective']]
     return lam
     
+def linear_projection(to_project, refs):
+    
+    
+    to_project = np.array(to_project)
+    if len(to_project.shape) > 1:
+        to_project = to_project.reshape(-1)
+        
+    refs = np.array(refs)
+    if len(refs.shape) > 2:
+        refs = refs.reshape((refs.shape[0],-1))
+    
+    p = refs.shape[0]
+    P = cvxopt.matrix(refs @ refs.T)
+    G = cvxopt.matrix(-np.eye(p))
+    h = cvxopt.matrix(np.zeros(p))
+    q = cvxopt.matrix(-to_project @ refs.T)
+    A = cvxopt.matrix(np.ones((1,p)))
+    b = cvxopt.matrix(np.ones((1,1)))
+    soln = cvxopt.solvers.qp(P=P, q=q, G=G, h=h, A=A, b=b)
+    lam = np.squeeze(np.array(soln['x']))
+    return lam
