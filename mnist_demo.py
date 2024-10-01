@@ -66,7 +66,9 @@ cmaps_2 = compute_maps(cbase_2, cref_images, reg=0.002)
 # creates a plot
 
 fig, axs = plt.subplots(6,5,figsize=(10,12))
-
+LBCM_1_losses=[]
+LBCM_2_losses=[]
+BCM_losses=[]
 for f in range(6):
     
     i = np.random.randint(500) +  num_refs 
@@ -87,7 +89,17 @@ for f in range(6):
     lam = mnist_utilities.solve(ip)
     bcm_support,bcm_mass=synthesis.particle_synthesis(np.array(ref_images),lam,base_1,100,0.05,0)
     bcm_image=empirical_to_image(bcm_support,bcm_mass)
-
+    
+    original_supp,original_mass=image_to_empirical(new_image)
+    LBCM_distances_1= ot.utils.dist(original_supp, rec_support_1, metric='sqeuclidean') / 2
+    lbcm_1_loss=ot.emd2(original_mass,rec_mass_1,LBCM_distances_1)
+    LBCM_1_losses.append(lbcm_1_loss)
+    LBCM_distances_2=ot.utils.dist(original_supp, rec_support_2, metric='sqeuclidean') / 2
+    lbcm_2_loss=ot.emd2(original_mass,rec_mass_2,LBCM_distances_2)
+    LBCM_2_losses.append(lbcm_2_loss)
+    bcm_distances=ot.utils.dist(original_supp, bcm_support, metric='sqeuclidean') / 2
+    bcm_loss=ot.emd2(original_mass,bcm_mass,bcm_distances)
+    BCM_losses.append(bcm_loss)
 
     axs[f][0].imshow(new_image, cmap='binary')
     axs[f][1].imshow(cnew_image, cmap='binary')
@@ -100,12 +112,12 @@ for f in range(6):
     axs[f][2].axis('off')
     axs[f][3].axis('off')
     axs[f][4].axis('off')
-    
+
 axs[0][0].set_title('Original', fontsize=20)
 axs[0][1].set_title('Occluded', fontsize=20)
-axs[0][2].set_title('LBCM (BC)', fontsize=20)
-axs[0][3].set_title('LBCM (Uniform)', fontsize=20)
-axs[0][4].set_title('BCM', fontsize=20)
+axs[0][2].set_title('LBCM (BC)\n Avg loss:{:.5f}'.format(np.mean(LBCM_1_losses)), fontsize=20)
+axs[0][3].set_title('LBCM (Uniform)\n Avg loss:{:.5f}'.format(np.mean(LBCM_2_losses)), fontsize=20)
+axs[0][4].set_title('BCM\n Avg loss:{:.5f}'.format(np.mean(BCM_losses)), fontsize=20)
 
 plt.tight_layout()
 plt.show()
