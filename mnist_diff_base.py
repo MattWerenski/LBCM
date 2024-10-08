@@ -8,17 +8,27 @@ import ot
 from lbcm import find_coordinate_lbcm, compute_maps, synthesize_lbcm
 from images import empirical_to_image
 
+import tensorflow as tf
+import time
 
 
-mnist.temporary_dir = lambda: './mnist'
+#We include two methods to load and sort MNIST digits
 
-# ====== load and sort MNIST difits ======
+# load and sort MNIST digits (no tensorflow)
 
-train_images = mnist.train_images()
-train_labels = mnist.train_labels()
+#train_images = mnist.train_images()
+#train_labels = mnist.train_labels()
 
-test_images = mnist.test_images()
-test_labels = mnist.test_labels()
+#test_images = mnist.test_images()
+#test_labels = mnist.test_labels()
+
+#mnist.temporary_dir = lambda: './mnist'
+
+
+#load and sort MNIST digits via tensorflow
+
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+
 
 sorted_digits = {}
 for i in range(10):
