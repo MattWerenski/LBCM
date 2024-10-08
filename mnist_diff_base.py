@@ -81,10 +81,21 @@ def create_circle_base():
             circle[i,j] = max(2 - np.abs(np.sqrt((i - 14) ** 2 + (j - 14) ** 2) - 10),0)
     return circle / circle.sum()
 
+def create_double_checker_base():
+    double_checker=np.zeros((28, 28))
+    double_checker[0:4, 0:4] = 1
+    double_checker[-4:, 0:4] = 1
+    double_checker[0:4, -4:] = 1
+    double_checker[-4:, -4:] = 1
+    return double_checker/np.sum(double_checker)
+
+
 base_1 = create_base_image(ref_images)
 base_2 = np.ones((28,28)) / (28 * 28)
 base_3 = create_checker_base()# chceckers
 base_4 = create_circle_base()
+base_5 = create_double_checker_base()
+
 
 # ====== computes maps from bases to references ======
 
@@ -92,6 +103,8 @@ maps_1 = compute_maps(base_1, ref_images, reg=0.002)
 maps_2 = compute_maps(base_2, ref_images, reg=0.002)
 maps_3 = compute_maps(base_3, ref_images, reg=0.002)
 maps_4 = compute_maps(base_4, ref_images, reg=0.002)
+maps_5 = compute_maps(base_5, ref_images, reg=0.002)
+
 
 # ====== applies the corruption to the bases ======
 
@@ -99,6 +112,7 @@ cbase_1 = corrupt(base_1)
 cbase_2 = corrupt(base_2)
 cbase_3 = corrupt(base_3)
 cbase_4 = corrupt(base_4)
+cbase_5 = corrupt(base_5)
 
 # ====== computes the maps between corruptoed images ======
 
@@ -106,10 +120,12 @@ cmaps_1 = compute_maps(cbase_1, cref_images, reg=0.002)
 cmaps_2 = compute_maps(cbase_2, cref_images, reg=0.002)
 cmaps_3 = compute_maps(cbase_3, cref_images, reg=0.002)
 cmaps_4 = compute_maps(cbase_4, cref_images, reg=0.002)
+cmaps_5 = compute_maps(cbase_5, cref_images, reg=0.002)
+
 
 # ====== make a figure ======
 
-fig, axs = plt.subplots(6,6,figsize=(24,24))
+fig, axs = plt.subplots(6,7,figsize=(24,24))
 
 for f in range(6):
     
@@ -122,6 +138,8 @@ for f in range(6):
     lbcm_lam_2, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
     lbcm_lam_3, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
     lbcm_lam_4, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+    lbcm_lam_5, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+
 
 
     rec_support_1, rec_mass_1 = synthesize_lbcm(base_1, ref_images, None, reg=0.001, lam=lbcm_lam_1, ref_maps=maps_1)
@@ -136,6 +154,10 @@ for f in range(6):
     rec_support_4, rec_mass_4 = synthesize_lbcm(base_4, ref_images, None, reg=0.001, lam=lbcm_lam_4, ref_maps=maps_4)
     lbcm_image_4 = empirical_to_image(rec_support_4, rec_mass_4, lower_bound=0.0002)
 
+    rec_support_5, rec_mass_5 = synthesize_lbcm(base_5, ref_images, None, reg=0.001, lam=lbcm_lam_5, ref_maps=maps_5)
+    lbcm_image_5 = empirical_to_image(rec_support_5, rec_mass_5, lower_bound=0.0002)
+
+
 
     axs[f][0].imshow(new_image, cmap='binary')
     axs[f][1].imshow(cnew_image, cmap='binary')
@@ -143,6 +165,8 @@ for f in range(6):
     axs[f][3].imshow(lbcm_image_2, cmap='binary')
     axs[f][4].imshow(lbcm_image_3, cmap='binary')
     axs[f][5].imshow(lbcm_image_4, cmap='binary')
+    axs[f][6].imshow(lbcm_image_5, cmap='binary')
+
 
     axs[f][0].axis('off')
     axs[f][1].axis('off')
@@ -150,6 +174,8 @@ for f in range(6):
     axs[f][3].axis('off')
     axs[f][4].axis('off')
     axs[f][5].axis('off')
+    axs[f][6].axis('off')
+
     
 axs[0][0].set_title('Original', fontsize=20)
 axs[0][1].set_title('Occluded', fontsize=20)
@@ -157,6 +183,7 @@ axs[0][2].set_title('LBCM (BC)', fontsize=20)
 axs[0][3].set_title('LBCM (Uniform)', fontsize=20)
 axs[0][4].set_title('LBCM (Checkers)', fontsize=20)
 axs[0][5].set_title('LBCM (Circle)', fontsize=20)
+axs[0][6].set_title('LBCM (Double Checker)', fontsize=20)
 
 plt.tight_layout()
 plt.savefig('mnist_lbcm.pdf')

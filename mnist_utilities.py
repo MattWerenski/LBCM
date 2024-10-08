@@ -166,7 +166,7 @@ def inner_products(base, refs, supp=None):
     return A
     
 '''
-mnist_utilities.solve
+opt_utilities.solve
     Actually solves the minimization procedure we've defined, given the 
     evaluation of the inner products in the tangent space.
     
@@ -195,21 +195,7 @@ def solve(inner_products, return_val=False):
         return [lam, soln['primal objective']]
     return lam
     
-
-'''
-mnist_utilities.linear_projection
-    Projects the to_project vector onto the convex hull of the refs
-
-parameters
-    to_project - np.array of length k
-
-    refs - np.array of shape (nrefs, k)
-
-returns
-    the projection of the to_project onto conv_hull(refs)
-'''
 def linear_projection(to_project, refs):
-    
     
     to_project = np.array(to_project)
     if len(to_project.shape) > 1:
