@@ -8,7 +8,7 @@ import ot
 from lbcm import find_coordinate_lbcm, compute_maps, synthesize_lbcm
 from images import empirical_to_image
 
-import tensorflow as tf
+#import tensorflow as tf
 import time
 
 
@@ -16,18 +16,18 @@ import time
 
 # load and sort MNIST digits (no tensorflow)
 
-#train_images = mnist.train_images()
-#train_labels = mnist.train_labels()
+mnist.temporary_dir = lambda: './mnist'
 
-#test_images = mnist.test_images()
-#test_labels = mnist.test_labels()
+train_images = mnist.train_images()
+train_labels = mnist.train_labels()
 
-#mnist.temporary_dir = lambda: './mnist'
+test_images = mnist.test_images()
+test_labels = mnist.test_labels()
 
 
 #load and sort MNIST digits via tensorflow
 
-(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+#(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 
 
 sorted_digits = {}
@@ -186,4 +186,5 @@ axs[0][5].set_title('LBCM (Circle)', fontsize=20)
 axs[0][6].set_title('LBCM (Double Checker)', fontsize=20)
 
 plt.tight_layout()
-plt.savefig('mnist_lbcm.pdf')
+plt.show()
+#plt.savefig('mnist_lbcm.pdf')

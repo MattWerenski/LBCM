@@ -1,7 +1,5 @@
 import numpy as np
-from sklearn.metrics.pairwise import euclidean_distances
 import ot
-import cvxpy as cp
 from lbcm import *
 
 def compute_maps(base_image:np.array, ref_images, reg):

@@ -2,6 +2,8 @@ import cvxopt
 import numpy as np
 import scipy as sp
 import scipy.linalg
+import torch
+from torch.autograd import Variable
 
 sqrtm = sp.linalg.sqrtm
 inv = sp.linalg.inv
@@ -209,3 +211,163 @@ def opt_lam_lbcm(refs, base, new, initial=None):
     )
 
     return np.array(solution['x']).squeeze(), np.array(C_refs)
+
+def opt_lam_mle(refs, emp, gamma=0.0003, iters=500, sqrt_iter=10, fixed_iter=10):
+    '''
+    opt_lam_mle - finds the Maximum Likelihood Estimator lambda using gradient descent
+
+    :param refs:       Reference measures as a list of p np.arrays of size [dim, dim]
+    :param emp:        measure to approximate as an np array of size [dim, dim]
+    :param gamma:      step size parameter
+    :param iters:      number of iterations to run
+    :param sqrt_iter:  number of iterations for computing the matrix square roots
+    :param fixed_iter: number of fixed point iterations to run
+
+    :return: optimal lambda found by the algorithm
+    '''
+    refs = torch.tensor(refs, dtype=torch.float32)
+    emp = torch.tensor(emp, dtype=torch.float32)
+    
+    p = len(refs)
+    lam = torch.tensor(np.ones(p)/p, dtype=torch.float32, requires_grad=True)
+    
+    # gradient descent iteration
+    for i in range(iters):
+        # construct the barycenter
+        bc = barycenter_torch(refs, lam, emp, sqrt_iter=sqrt_iter, fixed_iter=fixed_iter)
+
+        # compute the loss between the bc and empirical
+        loss = kl_loss(emp, bc)
+
+        # back prop
+        loss.backward(retain_graph=True)
+
+        with torch.no_grad():
+            prev_lam = lam.clone()
+            lam = lam - gamma * lam.grad # gradient descent
+            lam = proj_vec(lam) # project back onto simplex
+        lam.requires_grad = True
+        
+        if (prev_lam - lam).abs().sum() < 0.0000001:
+            break
+
+    return lam.detach().numpy()
+
+
+def proj_vec(lam):
+    '''
+    proj_vec - projects the vector onto the probability simplex
+
+    :param lam: tensor of size [dim] to be projected
+
+    :return: the L2 projection of lam onto the simplex
+    '''
+    p = lam.shape[0] 
+    dtype = lam.dtype
+    
+    mat0 = torch.zeros(p,p)
+    mat0[torch.arange(p)>=torch.transpose(torch.arange(p).unsqueeze(0),1,0)] = 1
+    mat0 = mat0.to(dtype=dtype)
+    
+    mat1 = torch.diag(1/(torch.arange(p)+1))
+    mat1 = mat1.to(dtype=dtype)
+    
+    [U,_] = torch.sort(lam,descending=True)
+    U_ = U + (1 - U @ mat0) @ mat1
+    rho = torch.max((U_ > 0).nonzero())
+
+    U[torch.arange(p) > rho] = 0
+    rho = (1 - U.sum()) / (rho + 1)
+
+    lam = lam + rho
+    lam = torch.max(lam, torch.tensor([0.0],dtype=dtype))
+    return lam
+
+def kl_loss(S_0, S_1):
+    '''
+    kl_loss - computes the important parts of the KL divergence between S_0 and S_1 for
+    optimizing in S_1
+
+    :param S_0: tensor of size [dim, dim] representing the first measure
+    :param S_1: tensor of size [dim, dim] representing the second measure
+
+    :return: D_KL( N(0,S_0) || N(0,S_1) ), but only including the terms involving S_1-
+    '''
+    inv = torch.inverse(S_1)
+    # slogdet returns a tuple containing (sign, logabsdet)
+    return torch.trace(inv @ S_0) + torch.slogdet(S_1)[1] # should this be negative??? Need to investigate when I get back.
+
+
+def barycenter_torch(refs, lam, init, sqrt_iter=10, fixed_iter=10):
+    '''
+    barycenter_torch - runs the fixed-point iteration algorithm to find 
+    the barycenter of the given reference measures with cooridinate lambda, 
+    starting from the given initial point
+
+    :param refs:       tensor of size [p, dim, dim] with refs[i] being the i'th ref measure
+    :param lam:        barycentric coordinate
+    :param sqrt_iter:  number of iterations to run the square root calculation for
+    :param fixed_iter: numbder of fixed-point iterations
+
+    :return: tensor of size [dim, dim] containing the barycenter
+    '''
+    [p, dim, _] = refs.shape
+    
+    # use the initial guess provided spread p times (size [p, dim, dim])
+    bc = init.clone()
+    for t in range(fixed_iter): 
+        # compute the terms inside the integral / sum (size [p, dim, dim])
+        #             expand because this function expects 3D tensors
+        bc_sqrt = sqrt_newton_schulz_autograd(bc.view(1,dim,dim), sqrt_iter)[0]
+        sum_terms = bc_sqrt @ refs @ bc_sqrt
+        sqrt_terms = sqrt_newton_schulz_autograd(sum_terms, sqrt_iter)
+        
+        # summing along the first axis, adds the matrices together (size [dim,dim])
+        S_t = (lam.view(p,1,1) * sqrt_terms).sum(0) 
+        
+        # compute the -1/2 power of the current bc (size [dim,dim])
+        # we take the 0'th because bc_sqrt was repeating the p times on first axis.
+        bc_sqrt_inv = torch.inverse(bc_sqrt)
+        
+        bc = bc_sqrt_inv @ S_t @ S_t @ bc_sqrt_inv
+    return bc
+
+
+def sqrt_newton_schulz_autograd(mats, numIters=10):
+    '''
+    sqrt_newron_schulz_autograd - runs the Newton-Shulz algorithm for 
+    finding the square root of a matrix and does so in a differentiable manner
+
+    :param mats:     tensor of size [p, dim, dim] where we take the sqrt the matrices
+                     stored as mats[i] for i = 0,...,p-1
+    :param numIters: number of iterations to run for
+
+    :return: tensor os size [p,dim,dim] where sqrt_mats[i] is the sqrt of mats[i]
+    '''
+    dtype = mats.dtype
+    p = mats.data.shape[0]
+    dim = mats.data.shape[1]
+    
+    mat_norms = (mats @ mats).sum(dim=(1,2)).sqrt()
+    
+    # divide each matrix by its norm (size [p, dim, dim])
+    Y = mats.div(mat_norms.view(p, 1, 1).expand_as(mats))
+    
+    # repeated identy matrix (size [p, dim, dim])
+    I = Variable(torch.eye(dim, dim).view(1, dim, dim).
+                 repeat(p, 1, 1).type(dtype), requires_grad=False)
+    
+    # repeated identy matrix (size [p, dim, dim])
+    Z = Variable(torch.eye(dim, dim).view(1, dim, dim).
+                 repeat(p, 1, 1).type(dtype), requires_grad=False)
+
+    # Newton-Schulz iterations
+    for i in range(numIters):
+        T = 0.5 * (3.0 * I - Z.bmm(Y)) # bmm multiplies Z[i] @ Y[i]
+        Y = Y.bmm(T)
+        Z = T.bmm(Z)
+        
+    sqrt_mats = Y * torch.sqrt(mat_norms).view(p, 1, 1).expand_as(mats)
+    
+    return sqrt_mats
+

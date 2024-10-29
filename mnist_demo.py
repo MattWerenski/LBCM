@@ -1,17 +1,26 @@
+# THIS SCRIPT MAY TAKE A FEW MINUTES TO CREATE THE IMAGE
+# PLEASE GIVE IT SOME TIME, IT MAY LOOK LIKE ITS HANGING
+# BUT THE PLOTTING IS A BIT SLOW
+
 import matplotlib.pyplot as plt
-import mnist
 import numpy as np
+
+
 
 from images import create_base_image, empirical_to_image
 from lbcm import *
 import mnist_utilities
 import synthesis
-import tensorflow as tf
 import time
 
-#mnist.temporary_dir = lambda: './mnist'
+# THIS MAY NEED TO BE MODIFIED DEPENDING ON HOW YOU
+# LOAD THE MNIST DATASET
+import tensorflow as tf
+#import mnist
 
 # load and sort MNIST difits
+
+#mnist.temporary_dir = lambda: './mnist'
 
 #train_images = mnist.train_images()
 #train_labels = mnist.train_labels()
@@ -21,6 +30,9 @@ import time
 
 # Automatically downloads and loads the MNIST dataset
 (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+
+# having a properly set train_images, train_labels, test_images and test_labels 
+# is all that is required
 
 sorted_digits = {}
 for i in range(10):
