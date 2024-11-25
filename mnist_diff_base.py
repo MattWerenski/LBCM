@@ -5,8 +5,7 @@ import mnist
 
 import ot
 
-from lbcm import find_coordinate_lbcm, compute_maps, synthesize_lbcm
-from images import empirical_to_image
+import images
 
 #import tensorflow as tf
 import time
@@ -99,11 +98,11 @@ base_5 = create_double_checker_base()
 
 # ====== computes maps from bases to references ======
 
-maps_1 = compute_maps(base_1, ref_images, reg=0.002)
-maps_2 = compute_maps(base_2, ref_images, reg=0.002)
-maps_3 = compute_maps(base_3, ref_images, reg=0.002)
-maps_4 = compute_maps(base_4, ref_images, reg=0.002)
-maps_5 = compute_maps(base_5, ref_images, reg=0.002)
+maps_1 = [images.compute_map(base_1, ref, reg=0.002) for ref in ref_images]
+maps_2 = [images.compute_map(base_2, ref, reg=0.002) for ref in ref_images]
+maps_3 = [images.compute_map(base_3, ref, reg=0.002) for ref in ref_images]
+maps_4 = [images.compute_map(base_4, ref, reg=0.002) for ref in ref_images]
+maps_5 = [images.compute_map(base_5, ref, reg=0.002) for ref in ref_images]
 
 
 # ====== applies the corruption to the bases ======
@@ -116,11 +115,11 @@ cbase_5 = corrupt(base_5)
 
 # ====== computes the maps between corruptoed images ======
 
-cmaps_1 = compute_maps(cbase_1, cref_images, reg=0.002)
-cmaps_2 = compute_maps(cbase_2, cref_images, reg=0.002)
-cmaps_3 = compute_maps(cbase_3, cref_images, reg=0.002)
-cmaps_4 = compute_maps(cbase_4, cref_images, reg=0.002)
-cmaps_5 = compute_maps(cbase_5, cref_images, reg=0.002)
+cmaps_1 = [images.compute_map(cbase_1, cref, reg=0.002) for cref in cref_images]
+cmaps_2 = [images.compute_map(cbase_2, cref, reg=0.002) for cref in cref_images]
+cmaps_3 = [images.compute_map(cbase_3, cref, reg=0.002) for cref in cref_images]
+cmaps_4 = [images.compute_map(cbase_4, cref, reg=0.002) for cref in cref_images]
+cmaps_5 = [images.compute_map(cbase_5, cref, reg=0.002) for cref in cref_images]
 
 
 # ====== make a figure ======
@@ -134,28 +133,28 @@ for f in range(6):
     new_image = sorted_digits[ref_digit][i]
     cnew_image = corrupt(new_image)
 
-    lbcm_lam_1, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
-    lbcm_lam_2, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
-    lbcm_lam_3, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
-    lbcm_lam_4, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
-    lbcm_lam_5, _, _, _ = find_coordinate_lbcm(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+    lbcm_lam_1, _, _, _ = images.find_coordinate(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+    lbcm_lam_2, _, _, _ = images.find_coordinate(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+    lbcm_lam_3, _, _, _ = images.find_coordinate(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+    lbcm_lam_4, _, _, _ = images.find_coordinate(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
+    lbcm_lam_5, _, _, _ = images.find_coordinate(cbase_1, cref_images, cnew_image, reg=0.002, ref_maps=cmaps_1)
 
 
 
-    rec_support_1, rec_mass_1 = synthesize_lbcm(base_1, ref_images, None, reg=0.001, lam=lbcm_lam_1, ref_maps=maps_1)
-    lbcm_image_1 = empirical_to_image(rec_support_1, rec_mass_1, lower_bound=0.0002)
+    rec_1 = images.synthesize(base_1, ref_images, lbcm_lam_1, reg=0.001, ref_maps=maps_1)
+    lbcm_image_1 = images.empirical_to_image(rec_1, lower_bound=0.0002)
     
-    rec_support_2, rec_mass_2 = synthesize_lbcm(base_2, ref_images, None, reg=0.001, lam=lbcm_lam_2, ref_maps=maps_2)
-    lbcm_image_2 = empirical_to_image(rec_support_2, rec_mass_2, lower_bound=0.0002)
+    rec_2 = images.synthesize(base_2, ref_images, lbcm_lam_2, reg=0.001, ref_maps=maps_2)
+    lbcm_image_2 = images.empirical_to_image(rec_2, lower_bound=0.0002)
     
-    rec_support_3, rec_mass_3 = synthesize_lbcm(base_3, ref_images, None, reg=0.001, lam=lbcm_lam_3, ref_maps=maps_3)
-    lbcm_image_3 = empirical_to_image(rec_support_3, rec_mass_3, lower_bound=0.0002)
+    rec_3 = images.synthesize(base_3, ref_images, lbcm_lam_3, reg=0.001, ref_maps=maps_3)
+    lbcm_image_3 = images.empirical_to_image(rec_3, lower_bound=0.0002)
 
-    rec_support_4, rec_mass_4 = synthesize_lbcm(base_4, ref_images, None, reg=0.001, lam=lbcm_lam_4, ref_maps=maps_4)
-    lbcm_image_4 = empirical_to_image(rec_support_4, rec_mass_4, lower_bound=0.0002)
+    rec_4 = images.synthesize(base_4, ref_images, lbcm_lam_4, reg=0.001, ref_maps=maps_4)
+    lbcm_image_4 = images.empirical_to_image(rec_4, lower_bound=0.0002)
 
-    rec_support_5, rec_mass_5 = synthesize_lbcm(base_5, ref_images, None, reg=0.001, lam=lbcm_lam_5, ref_maps=maps_5)
-    lbcm_image_5 = empirical_to_image(rec_support_5, rec_mass_5, lower_bound=0.0002)
+    rec_5 = images.synthesize(base_5, ref_images, lbcm_lam_5, reg=0.001, ref_maps=maps_5)
+    lbcm_image_5 = images.empirical_to_image(rec_5, lower_bound=0.0002)
 
 
 

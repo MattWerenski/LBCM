@@ -295,8 +295,7 @@ def kl_loss(S_0, S_1):
     '''
     inv = torch.inverse(S_1)
     # slogdet returns a tuple containing (sign, logabsdet)
-    return torch.trace(inv @ S_0) + torch.slogdet(S_1)[1] # should this be negative??? Need to investigate when I get back.
-
+    return torch.trace(inv @ S_0) + torch.slogdet(S_1)[1] 
 
 def barycenter_torch(refs, lam, init, sqrt_iter=10, fixed_iter=10):
     '''
